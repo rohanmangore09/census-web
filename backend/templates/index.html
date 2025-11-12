@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>घरगुती लोकसंख्या नोंद</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>घरगुती लोकसंख्या नोंद</h1>
+    <form id="censusForm" action="/submit" method="post">
+      <label>घराचा पत्ता:</label>
+      <input type="text" name="address" placeholder="उदा: गाव - पत्ता" required>
+
+      <h2>सदस्यांची माहिती</h2>
+      <div id="members"></div>
+
+      <button type="button" onclick="addMember()">+ नवीन सदस्य जोडा</button>
+      <br><br>
+      <button type="submit">Submit करा</button>
+    </form>
+
+    <hr>
+    <h3>नोंदलेली घरे पाहा</h3>
+    <button onclick="loadHouseholds()">डेटा लोड करा</button>
+    <pre id="output"></pre>
+  </div>
+
+<script>
+function addMember(){
+  const div = document.createElement('div');
+  div.className = 'member';
+  div.innerHTML = `
+    <label>नाव:</label>
+    <input name="name[]" required>
+    <label>वय:</label>
+    <input name="age[]" type="number">
+    <label>लिंग:</label>
+    <select name="gender[]">
+      <option value="">-- निवडा --</option>
+      <option value="male">पुरुष</option>
+      <option value="female">स्त्री</option>
+      <option value="other">इतर</option>
+    </select>
+    <label>विवाहित:</label>
+    <input type="checkbox" name="married[]">
+    <label>इतर माहिती:</label>
+    <input name="other[]">
+    <button type="button" onclick="this.parentNode.remove()">Remove</button>
+  `;
+  document.getElementById('members').appendChild(div);
+}
+addMember();
+
+function loadHouseholds(){
+  fetch('/api/households')
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+    })
+    .catch(err => {
+      document.getElementById('output').textContent = err;
+    });
+}
+</script>
+</body>
+</html>
