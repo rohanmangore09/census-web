@@ -1,4 +1,10 @@
+from flask_sqlalchemy import SQLAlchemy
+
+# ही लाइन बदलली आहे — आता db इथे initialize होणार नाही
+# तो app.py मधून import होईल (circular import टाळण्यासाठी)
+
 from app import db
+
 
 class HouseholdMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)
