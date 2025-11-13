@@ -1,84 +1,69 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
-from db import SessionLocal, init_db
-from models import Household, Person
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from datetime import timedelta
+import os
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = Flask(__name__)
+app.secret_key = "supersecret"
+app.permanent_session_lifetime = timedelta(minutes=30)
 
-@app.before_first_request
-def startup():
-    init_db()
+# Database config
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:password@db:5432/censusdb'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+# Import models
+from models import HouseholdMember
 
-@app.route("/submit", methods=["POST"])
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/submit', methods=['POST'])
 def submit():
-    data = request.form
-    address = data.get("address", "")
-    names = request.form.getlist("name[]")
-    ages = request.form.getlist("age[]")
-    genders = request.form.getlist("gender[]")
-    married_list = request.form.getlist("married[]")
-    other_list = request.form.getlist("other[]")
+    household_id = request.form['household_id']
+    name = request.form['name']
+    age = request.form['age']
+    gender = request.form['gender']
+    married = request.form['married']
 
-    db = SessionLocal()
-    try:
-        household = Household(address=address)
-        db.add(household)
-        db.flush()
+    new_member = HouseholdMember(
+        household_id=household_id,
+        name=name,
+        age=age,
+        gender=gender,
+        married=married
+    )
+    db.session.add(new_member)
+    db.session.commit()
 
-        for i, name in enumerate(names):
-            if not name.strip():
-                continue
-            age = None
-            try:
-                age = int(ages[i]) if ages[i] else None
-            except:
-                age = None
-            gender = genders[i] if i < len(genders) else None
-            married = married_list[i] in ["on", "true", "1"] if i < len(married_list) else False
-            other = other_list[i] if i < len(other_list) else None
-            person = Person(
-                household_id=household.id,
-                name=name.strip(),
-                age=age,
-                gender=gender,
-                married=married,
-                other_info=other,
-            )
-            db.add(person)
+    return redirect(url_for('home'))
 
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        return f"Error: {e}", 500
-    finally:
-        db.close()
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == 'admin' and password == 'admin123':
+            session['admin'] = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('admin_login.html', error="Invalid credentials")
+    return render_template('admin_login.html')
 
-    return redirect(url_for("index"))
+@app.route('/admin-dashboard')
+def admin_dashboard():
+    if 'admin' not in session:
+        return redirect(url_for('admin_login'))
+    members = HouseholdMember.query.all()
+    return render_template('admin.html', members=members)
 
-@app.route("/api/households", methods=["GET"])
-def get_households():
-    db = SessionLocal()
-    try:
-        households = db.query(Household).all()
-        result = []
-        for h in households:
-            members = []
-            for m in h.members:
-                members.append({
-                    "id": m.id,
-                    "name": m.name,
-                    "age": m.age,
-                    "gender": m.gender,
-                    "married": m.married,
-                    "other": m.other_info
-                })
-            result.append({"id": h.id, "address": h.address, "members": members})
-        return jsonify(result)
-    finally:
-        db.close()
+@app.route('/logout')
+def logout():
+    session.pop('admin', None)
+    return redirect(url_for('home'))
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(host='0.0.0.0', port=8000)

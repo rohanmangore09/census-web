@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h2>👑 Admin Dashboard</h2>
+    <a href="/logout" class="logout">Logout</a>
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Household</th>
+        <th>Name</th>
+        <th>Age</th>
+        <th>Gender</th>
+        <th>Married</th>
+      </tr>
+      {% for member in members %}
+      <tr>
+        <td>{{ member.id }}</td>
+        <td>{{ member.household_id }}</td>
+        <td>{{ member.name }}</td>
+        <td>{{ member.age }}</td>
+        <td>{{ member.gender }}</td>
+        <td>{{ member.married }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</body>
+</html>
